@@ -59,6 +59,7 @@ type DashboardStats = {
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
 
 function App() {
+  const [authenticated, setAuthenticated] = useState(() => localStorage.getItem('landguard_demo_session') === 'true')
   const [activeNav, setActiveNav] = useState('Dashboard')
   const [alertFilter, setAlertFilter] = useState<Risk | 'All'>('All')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -83,6 +84,10 @@ function App() {
     low_risk_transactions: 982,
     medium_risk_transactions: 189,
     high_risk_transactions: 36,
+  }
+
+  if (!authenticated) {
+    return <LoginScreen onContinue={() => { localStorage.setItem('landguard_demo_session', 'true'); setAuthenticated(true) }} />
   }
 
   return (
@@ -123,6 +128,7 @@ function App() {
         </header>
 
         <div className="content-wrap">
+          {activeNav !== 'Dashboard' ? <WorkspacePage page={activeNav} onBack={() => setActiveNav('Dashboard')} /> : <>
           <section className="page-heading"><div><p className="eyebrow">Tuesday, 22 September 2026</p><h1>Dashboard</h1><p className="heading-subtitle">Here is today&apos;s verification overview.</p></div><button className="outline-button"><FileText size={15} /> Export report</button></section>
 
           <section className="metric-grid" aria-label="Overview metrics">
@@ -145,11 +151,44 @@ function App() {
 
           <section className="panel activity-panel"><div className="panel-heading"><div><p className="eyebrow">Your team&apos;s work</p><h2>Recent verification activity</h2></div><button className="text-button">View activity <span>→</span></button></div><div className="activity-list">{activity.map(({ icon: Icon, text, time, tone }) => <div className="activity-item" key={text}><div className={`activity-icon activity-icon--${tone}`}><Icon size={14} /></div><span>{text}</span><time>{time}</time></div>)}</div></section>
 
-          <footer className="footer"><span><span className="live-dot" />{apiState === 'live' ? 'Connected to LandGuard API' : 'Demo data — sign in to connect API'}</span><span>{apiState === 'live' ? 'Live database metrics' : 'Data refreshed 4 minutes ago'}</span></footer>
+          <footer className="footer"><span><span className="live-dot" />{apiState === 'live' ? 'Connected to LandGuard API' : 'Demo data mode'}</span><span>{apiState === 'live' ? 'Live database metrics' : 'Use the backend login to connect API'}</span></footer>
+          </>}
         </div>
       </main>
     </div>
   )
+}
+
+function LoginScreen({ onContinue }: { onContinue: () => void }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setError('')
+    try {
+      const response = await fetch(`${apiUrl}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
+      if (!response.ok) throw new Error('Invalid email or password')
+      const result = await response.json()
+      localStorage.setItem('landguard_access_token', result.access_token)
+      onContinue()
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Unable to sign in')
+    }
+  }
+  return <div className="login-screen"><div className="login-card"><div className="brand-row login-brand"><div className="brand-mark"><ShieldCheck size={17} /></div><span>LandVerify</span></div><p className="eyebrow">Secure workspace</p><h1>Welcome back</h1><p className="heading-subtitle">Sign in to review land transactions and risk indicators.</p><form onSubmit={submit} className="login-form"><label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="officer@example.com" required /></label><label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" required /></label>{error && <p className="login-error">{error}</p>}<button className="login-button" type="submit">Sign in <span>→</span></button></form><div className="login-divider"><span>or</span></div><button className="demo-button" onClick={onContinue}>Explore demo workspace</button><p className="login-note">Demo data is synthetic and for academic development only.</p></div></div>
+}
+
+function WorkspacePage({ page, onBack }: { page: string; onBack: () => void }) {
+  const content: Record<string, { eyebrow: string; title: string; description: string; rows: string[][] }> = {
+    Parcels: { eyebrow: 'Land registry', title: 'Parcels', description: 'Search and inspect registered land parcels.', rows: [['RW-10432', 'Kigali, Gasabo', '1.24 ha', 'Active'], ['RW-88213', 'Kigali, Kicukiro', '0.87 ha', 'Active'], ['RW-33107', 'Huye, Ngoma', '2.10 ha', 'Active']] },
+    Owners: { eyebrow: 'Registry records', title: 'Owners', description: 'Review registered owners and their parcel relationships.', rows: [['OWN-001', 'Jean Claude N.', '4 parcels', 'Verified'], ['OWN-002', 'Aline M.', '2 parcels', 'Verified'], ['OWN-003', 'Emmanuel K.', '1 parcel', 'Review required']] },
+    Transactions: { eyebrow: 'Transaction desk', title: 'Transactions', description: 'Track sale activity and run verification checks.', rows: [['TX-10432', 'RW-10432', 'Sale', 'Pending review'], ['TX-88213', 'RW-88213', 'Transfer', 'Verified'], ['TX-33107', 'RW-33107', 'Sale', 'Closed']] },
+    Cases: { eyebrow: 'Human review', title: 'Suspicious cases', description: 'Review risk indicators and record an officer decision.', rows: [['CASE-10432', 'Possible duplicate', 'High', 'Open'], ['CASE-88213', 'Recent ownership change', 'Medium', 'Under review'], ['CASE-20991', 'Review required', 'Medium', 'Open']] },
+    'Audit logs': { eyebrow: 'Accountability', title: 'Audit logs', description: 'Every important action is recorded for traceability.', rows: [['Today 09:42', 'Transaction verification', 'TX-10432', 'Officer'], ['Today 08:15', 'Case opened', 'CASE-88213', 'Officer'], ['Yesterday', 'User login', 'Gilbert Godson', 'System']] },
+  }
+  const selected = content[page]
+  return <section className="workspace-page"><button className="back-button" onClick={onBack}>← Dashboard</button><p className="eyebrow">{selected.eyebrow}</p><div className="workspace-title"><div><h1>{selected.title}</h1><p className="heading-subtitle">{selected.description}</p></div><button className="outline-button"><Search size={15} /> Search records</button></div><div className="table-panel"><div className="table-toolbar"><strong>{selected.rows.length * 401} records</strong><button className="filter-button">Filter <ChevronDown size={14} /></button></div><div className="data-table">{selected.rows.map((row) => <div className="data-row" key={row[0]}>{row.map((cell, index) => <span className={index === row.length - 1 ? 'row-status' : ''} key={cell}>{cell}</span>)}<button className="row-action" aria-label={`Open ${row[0]}`}>→</button></div>)}</div></div></section>
 }
 
 function Metric({ icon: Icon, label, value, change, accent }: { icon: typeof Map; label: string; value: string; change: string; accent: string }) {
