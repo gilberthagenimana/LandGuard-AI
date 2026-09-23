@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.routes.auth import router as auth_router
 from app.api.v1.routes.dashboard import router as dashboard_router
 from app.api.v1.routes.users import router as users_router
+from app.api.v1.routes.verification import router as verification_router
 from app.core.config import settings
 from app.db.init_db import init_db
 
@@ -27,6 +28,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(dashboard_router)
+app.include_router(verification_router)
 
 
 @app.on_event("startup")
