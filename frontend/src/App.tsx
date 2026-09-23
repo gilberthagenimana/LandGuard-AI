@@ -58,7 +58,7 @@ type DashboardStats = {
   recent_verification_activity: { action: string; entity: string; entity_id: string | null; created_at: string }[]
 }
 
-type CurrentUser = { id: number; full_name: string; email: string; is_active: boolean; roles: { name: string }[] }
+type CurrentUser = { id: number; full_name: string; email: string; is_active: boolean; roles: string[] }
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
 
@@ -121,7 +121,7 @@ function App() {
         </div>
         <nav className="primary-nav" aria-label="Main navigation">
           <p className="nav-label">Workspace</p>
-          {navigation.filter(({ label }) => label !== 'Users' || currentUser?.roles.some((role) => role.name === 'ADMIN')).map(({ label, icon: Icon }) => (
+          {navigation.filter(({ label }) => label !== 'Users' || currentUser?.roles.includes('ADMIN')).map(({ label, icon: Icon }) => (
             <button key={label} className={`nav-item ${activeNav === label ? 'nav-item--active' : ''}`} onClick={() => { setActiveNav(label); setMobileNavOpen(false) }}>
               <Icon size={16} strokeWidth={1.9} /><span>{label}</span>
               {label === 'Cases' && <span className="nav-count">12</span>}
@@ -130,7 +130,7 @@ function App() {
         </nav>
         <div className="sidebar-bottom">
           <div className="support-link"><CircleHelp size={16} /><span>Help & documentation</span></div>
-          <div className="user-card"><div className="avatar">{currentUser ? initials(currentUser.full_name) : 'GG'}</div><div><strong>{currentUser?.full_name ?? 'Gilbert Godson'}</strong><span>{currentUser?.roles[0]?.name ?? 'Demo workspace'}</span></div><button className="logout-button" onClick={logout}>Log out</button></div>
+          <div className="user-card"><div className="avatar">{currentUser ? initials(currentUser.full_name) : 'GG'}</div><div><strong>{currentUser?.full_name ?? 'Demo Officer'}</strong><span>{currentUser ? displayRole(currentUser.roles[0]) : 'Demo workspace'}</span></div><button className="logout-button" onClick={logout}>Log out</button></div>
         </div>
       </aside>
 
@@ -140,7 +140,7 @@ function App() {
         <header className="topbar">
           <button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileNavOpen(true)}><Menu size={20} /></button>
           <div className="breadcrumbs"><span>Workspace</span><span className="crumb-divider">/</span><strong>{activeNav}</strong></div>
-          <div className="top-actions"><button className="search-trigger"><Search size={16} /><span>Search anything</span><kbd>⌘ K</kbd></button><button className="icon-button notification-button" aria-label="Notifications"><Bell size={18} /><i /></button><div className="top-avatar">GG</div></div>
+          <div className="top-actions"><button className="search-trigger"><Search size={16} /><span>Search anything</span><kbd>⌘ K</kbd></button><button className="icon-button notification-button" aria-label="Notifications"><Bell size={18} /><i /></button><div className="top-avatar">{currentUser ? initials(currentUser.full_name) : 'DO'}</div></div>
         </header>
 
         <div className="content-wrap">
@@ -194,7 +194,7 @@ function LoginScreen({ onContinue }: { onContinue: (user: CurrentUser) => void }
       setError(loginError instanceof Error ? loginError.message : 'Unable to sign in')
     }
   }
-  const enterDemo = () => onContinue({ id: 0, full_name: 'Demo Officer', email: 'demo@landguard.local', is_active: true, roles: [{ name: 'VERIFICATION_OFFICER' }] })
+  const enterDemo = () => onContinue({ id: 0, full_name: 'Demo Officer', email: 'demo@landguard.local', is_active: true, roles: ['VERIFICATION_OFFICER'] })
   return <div className="login-screen"><div className="login-card"><div className="brand-row login-brand"><div className="brand-mark"><ShieldCheck size={17} /></div><span>LandGuard AI</span></div><h1>Sign in</h1><p className="login-subtitle">Verification and fraud-risk decision-support system</p><form onSubmit={submit} className="login-form"><label>Username<input type="text" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="m.habyarimana" autoComplete="username" required /></label><label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••••" autoComplete="current-password" required /></label><fieldset className="role-field"><legend>Role</legend><div className="role-switcher">{['Officer', 'Admin', 'Auditor'].map((option) => <button type="button" key={option} className={role === option ? 'role-option role-option--active' : 'role-option'} onClick={() => setRole(option)}>{option}</button>)}</div></fieldset>{error && <p className="login-error">{error}</p>}<button className="login-button" type="submit">Sign in</button></form><button className="demo-button" onClick={enterDemo}>Explore demo workspace</button><p className="login-note">Authorized personnel only.<br />All access attempts are logged and audited.</p></div></div>
 }
 
@@ -208,9 +208,9 @@ function WorkspacePage({ page, onBack, currentUser }: { page: string; onBack: ()
     Cases: { title: 'Cases', subtitle: '12 cases open for officer review', search: 'Search cases', columns: [], rows: [['CASE-0441', 'HIGH', 'Under review', 'Parcel RW-20991 · E. Nkurunziza → G. Mutesi', 'Opened 1 day ago', 'M. Habyarimana'], ['CASE-0442', 'HIGH', 'Open', 'Parcel RW-77890 · S. Mukamana → T. Uwimana', 'Opened 6 hours ago', 'Unassigned'], ['CASE-0443', 'MEDIUM', 'Needs information', 'Parcel RW-88213 · A. Uwase → F. Byiringiro', 'Opened 5 hours ago', 'M. Habyarimana'], ['CASE-0444', 'MEDIUM', 'Under review', 'Parcel RW-55621 · P. Habimana → B. Ndayambaje', 'Opened 2 days ago', 'R. Uwizeye']] },
   }
   const selected = pageConfig[page]
-  if (page === 'Users' && currentUser?.roles.some((role) => role.name === 'ADMIN')) return <AdminUsersPage onBack={onBack} />
-  if (page === 'Cases') return <section className="workspace-page"><WorkspaceHeader title={selected.title} subtitle={selected.subtitle} search={selected.search} onBack={onBack} /><div className="case-list">{selected.rows.map((row) => <div className="case-card" key={row[0]}><div><strong>{row[0]}</strong><span className={`risk-label risk-label--${row[1].toLowerCase()}`}>{row[1]}</span><span className="case-status">{row[2]}</span><p>{row[3]}</p></div><div className="case-meta"><span>{row[4]}</span><strong>{row[5]}</strong></div></div>)}</div></section>
-  return <section className="workspace-page"><WorkspaceHeader title={selected.title} subtitle={selected.subtitle} search={selected.search} onBack={onBack} /><div className={`reference-table reference-table--${page.toLowerCase().replace(' ', '-')}`}><div className="reference-header">{selected.columns.map((column) => <span key={column}>{column}</span>)}</div>{selected.rows.map((row) => <div className="reference-row" key={row[0]}>{row.map((cell, index) => <span key={`${row[0]}-${cell}`} className={`${index === row.length - 1 ? 'reference-muted' : ''} ${['LOW', 'MEDIUM', 'HIGH'].includes(cell) ? `risk-label risk-label--${cell.toLowerCase()}` : ''} ${['Registered', 'Active', 'Verified'].includes(cell) ? 'status-label' : ''}`}>{cell}</span>)}</div>)}</div></section>
+  if (page === 'Users' && currentUser?.roles.includes('ADMIN')) return <AdminUsersPage onBack={onBack} />
+  if (page === 'Cases') return <section className="workspace-page"><WorkspaceHeader title={selected.title} subtitle={selected.subtitle} search={selected.search} onBack={onBack} currentUser={currentUser} /><div className="case-list">{selected.rows.map((row) => <div className="case-card" key={row[0]}><div><strong>{row[0]}</strong><span className={`risk-label risk-label--${row[1].toLowerCase()}`}>{row[1]}</span><span className="case-status">{row[2]}</span><p>{row[3]}</p></div><div className="case-meta"><span>{row[4]}</span><strong>{row[5]}</strong></div></div>)}</div></section>
+  return <section className="workspace-page"><WorkspaceHeader title={selected.title} subtitle={selected.subtitle} search={selected.search} onBack={onBack} currentUser={currentUser} /><div className={`reference-table reference-table--${page.toLowerCase().replace(' ', '-')}`}><div className="reference-header">{selected.columns.map((column) => <span key={column}>{column}</span>)}</div>{selected.rows.map((row) => <div className="reference-row" key={row[0]}>{row.map((cell, index) => <span key={`${row[0]}-${cell}`} className={`${index === row.length - 1 ? 'reference-muted' : ''} ${['LOW', 'MEDIUM', 'HIGH'].includes(cell) ? `risk-label risk-label--${cell.toLowerCase()}` : ''} ${['Registered', 'Active', 'Verified'].includes(cell) ? 'status-label' : ''}`}>{cell}</span>)}</div>)}</div></section>
 }
 
 function AdminUsersPage({ onBack }: { onBack: () => void }) {
@@ -225,8 +225,8 @@ function AdminUsersPage({ onBack }: { onBack: () => void }) {
   return <section className="workspace-page"><button className="back-button" onClick={onBack}>← Dashboard</button><div className="workspace-header"><div><h1>Users</h1><p>Only administrators can create officer and auditor accounts.</p></div></div><div className="admin-user-layout"><form className="user-create-form" onSubmit={submit}><p className="eyebrow">Create account</p><label>Full name<input required value={form.full_name} onChange={(event) => setForm({ ...form, full_name: event.target.value })} /></label><label>Username / email<input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label><label>Temporary password<input required type="password" minLength={8} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label><label>Role<select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}><option value="VERIFICATION_OFFICER">Verification officer</option><option value="AUDITOR">Auditor</option></select></label><button className="login-button" type="submit">Create user</button>{message && <p className="form-message">{message}</p>}</form><div className="table-panel"><div className="table-toolbar"><strong>Authorized accounts</strong></div><div className="data-table"><div className="data-row"><span>Gilbert Godson</span><span>admin@landguard.com</span><span>ADMIN</span><span className="row-status">Active</span></div></div></div></div></section>
 }
 
-function WorkspaceHeader({ title, subtitle, search, onBack }: { title: string; subtitle: string; search: string; onBack: () => void }) {
-  return <><div className="workspace-header"><div><h1>{title}</h1><p>{subtitle}</p></div><div className="workspace-actions"><div className="page-search"><Search size={14} /><span>{search}</span></div><Bell size={16} className="header-bell" /><div className="top-avatar">GG</div></div></div>{title === 'Parcels' && <div className="page-tabs"><button className="tab-active">All parcels</button><button>Registered</button><button>Under review</button><button>Disputed</button></div>}{title === 'Transactions' && <div className="page-tabs"><button className="tab-active">All</button><button>Pending</button><button>Under review</button><button>Verified</button></div>}<button className="back-button" onClick={onBack}>← Dashboard</button></>
+function WorkspaceHeader({ title, subtitle, search, onBack, currentUser }: { title: string; subtitle: string; search: string; onBack: () => void; currentUser: CurrentUser | null }) {
+  return <><div className="workspace-header"><div><h1>{title}</h1><p>{subtitle}</p></div><div className="workspace-actions"><div className="page-search"><Search size={14} /><span>{search}</span></div><Bell size={16} className="header-bell" /><div className="top-avatar">{currentUser ? initials(currentUser.full_name) : 'DO'}</div></div></div>{title === 'Parcels' && <div className="page-tabs"><button className="tab-active">All parcels</button><button>Registered</button><button>Under review</button><button>Disputed</button></div>}{title === 'Transactions' && <div className="page-tabs"><button className="tab-active">All</button><button>Pending</button><button>Under review</button><button>Verified</button></div>}<button className="back-button" onClick={onBack}>← Dashboard</button></>
 }
 
 function Metric({ icon: Icon, label, value, change, accent }: { icon: typeof Map; label: string; value: string; change: string; accent: string }) {
@@ -251,6 +251,13 @@ function riskPercent(value: number, total: number) {
 
 function initials(name: string) {
   return name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function displayRole(role?: string) {
+  if (role === 'VERIFICATION_OFFICER') return 'Verification officer'
+  if (role === 'ADMIN') return 'Administrator'
+  if (role === 'AUDITOR') return 'Auditor'
+  return 'Authorized user'
 }
 
 export default App
