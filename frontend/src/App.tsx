@@ -163,6 +163,7 @@ function App() {
 function LoginScreen({ onContinue }: { onContinue: () => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState('Officer')
   const [error, setError] = useState('')
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -177,7 +178,7 @@ function LoginScreen({ onContinue }: { onContinue: () => void }) {
       setError(loginError instanceof Error ? loginError.message : 'Unable to sign in')
     }
   }
-  return <div className="login-screen"><div className="login-card"><div className="brand-row login-brand"><div className="brand-mark"><ShieldCheck size={17} /></div><span>LandVerify</span></div><p className="eyebrow">Secure workspace</p><h1>Welcome back</h1><p className="heading-subtitle">Sign in to review land transactions and risk indicators.</p><form onSubmit={submit} className="login-form"><label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="officer@example.com" required /></label><label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" required /></label>{error && <p className="login-error">{error}</p>}<button className="login-button" type="submit">Sign in <span>→</span></button></form><div className="login-divider"><span>or</span></div><button className="demo-button" onClick={onContinue}>Explore demo workspace</button><p className="login-note">Demo data is synthetic and for academic development only.</p></div></div>
+  return <div className="login-screen"><div className="login-card"><div className="brand-row login-brand"><div className="brand-mark"><ShieldCheck size={17} /></div><span>LandGuard AI</span></div><h1>Sign in</h1><p className="login-subtitle">Verification and fraud-risk decision-support system</p><form onSubmit={submit} className="login-form"><label>Username<input type="text" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="m.habyarimana" autoComplete="username" required /></label><label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••••" autoComplete="current-password" required /></label><fieldset className="role-field"><legend>Role</legend><div className="role-switcher">{['Officer', 'Admin', 'Auditor'].map((option) => <button type="button" key={option} className={role === option ? 'role-option role-option--active' : 'role-option'} onClick={() => setRole(option)}>{option}</button>)}</div></fieldset>{error && <p className="login-error">{error}</p>}<button className="login-button" type="submit">Sign in</button></form><button className="demo-button" onClick={onContinue}>Explore demo workspace</button><p className="login-note">Authorized personnel only.<br />All access attempts are logged and audited.</p></div></div>
 }
 
 function WorkspacePage({ page, onBack }: { page: string; onBack: () => void }) {
