@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.db.session import get_db
+from app.models.role import Role
 from app.models.user import User
 from app.schemas.user import UserCreate, UserOut, UserUpdate
 from app.services.auth.service import get_current_user, require_roles
@@ -34,6 +35,10 @@ def create_user(
         password_hash=hash_password(payload.password),
         is_active=payload.is_active,
     )
+    role = db.query(Role).filter(Role.name == payload.role).first()
+    if role is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="User role is not configured")
+    user.roles.append(role)
     db.add(user)
     db.commit()
     db.refresh(user)

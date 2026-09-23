@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
@@ -10,8 +10,17 @@ class UserBase(BaseModel):
     is_active: bool = True
 
 
+UserRole = Literal["VERIFICATION_OFFICER", "AUDITOR"]
+
+
 class UserCreate(UserBase):
     password: str
+    role: UserRole
+
+
+class RoleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    name: str
 
 
 class UserUpdate(BaseModel):
@@ -25,6 +34,7 @@ class UserOut(UserBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    roles: list[RoleOut] = []
 
 
 class UserLogin(BaseModel):

@@ -4,9 +4,11 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.db.session import get_db
+from app.models.role import Role
 from app.models.user import User
 from app.schemas.auth import LoginRequest, TokenResponse
-from app.services.auth.service import authenticate_user, create_auth_token, get_current_user
+from app.schemas.user import UserCreate, UserOut
+from app.services.auth.service import authenticate_user, create_auth_token, get_current_user, require_roles
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -32,8 +34,12 @@ def get_me(current_user: User = Depends(get_current_user)):
     }
 
 
-@router.post("/register")
-def register_user(payload: LoginRequest, db: Session = Depends(get_db)):
+@router.post("/register", response_model=UserOut)
+def register_user(
+    payload: UserCreate,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_roles("ADMIN")),
+):
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
@@ -42,9 +48,13 @@ def register_user(payload: LoginRequest, db: Session = Depends(get_db)):
         full_name="New User",
         email=payload.email,
         password_hash=hash_password(payload.password),
-        is_active=True,
+        is_active=payload.is_active,
     )
+    role = db.query(Role).filter(Role.name == payload.role).first()
+    if role is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="User role is not configured")
+    new_user.roles.append(role)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {"message": "User created successfully", "user_id": new_user.id}
+    return new_user
