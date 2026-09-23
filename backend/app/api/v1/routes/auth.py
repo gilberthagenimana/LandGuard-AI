@@ -19,9 +19,8 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
-    role_aliases = {"OFFICER": "VERIFICATION_OFFICER", "ADMIN": "ADMIN", "AUDITOR": "AUDITOR"}
     assigned_roles = {role.name for role in user.roles}
-    if role_aliases[payload.role] not in assigned_roles:
+    if payload.role.value not in assigned_roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Selected role is not assigned to this account")
 
     token = create_auth_token(user)

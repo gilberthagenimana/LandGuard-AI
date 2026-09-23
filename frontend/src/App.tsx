@@ -39,6 +39,12 @@ const navigation: NavItem[] = [
   { label: 'Audit logs', icon: ClipboardCheck },
 ]
 
+const roleNavigation: Record<string, string[]> = {
+  ADMIN: ['Dashboard', 'Users', 'Parcels', 'Owners', 'Transactions', 'Cases', 'Audit logs'],
+  OFFICER: ['Dashboard', 'Parcels', 'Owners', 'Transactions', 'Cases'],
+  AUDITOR: ['Dashboard', 'Parcels', 'Owners', 'Transactions', 'Cases', 'Audit logs'],
+}
+
 const alerts: { id: string; title: string; meta: string; risk: Risk }[] = [
   { id: 'RW-10432', title: 'Possible duplicate', meta: '8 min ago', risk: 'High' },
   { id: 'RW-88213', title: 'Recent ownership change', meta: '32 min ago', risk: 'Medium' },
@@ -128,7 +134,7 @@ function App() {
         </div>
         <nav className="primary-nav" aria-label="Main navigation">
           <p className="nav-label">Workspace</p>
-          {navigation.filter(({ label }) => label !== 'Users' || currentUser?.roles.includes('ADMIN')).map(({ label, icon: Icon }) => (
+          {navigation.filter(({ label }) => roleNavigation[currentUser?.roles[0] ?? 'OFFICER']?.includes(label)).map(({ label, icon: Icon }) => (
             <button key={label} className={`nav-item ${activeNav === label ? 'nav-item--active' : ''}`} onClick={() => { setActiveNav(label); setMobileNavOpen(false) }}>
               <Icon size={16} strokeWidth={1.9} /><span>{label}</span>
               {label === 'Cases' && <span className="nav-count">12</span>}
@@ -152,7 +158,7 @@ function App() {
 
         <div className="content-wrap">
           {activeNav !== 'Dashboard' ? <WorkspacePage page={activeNav} onBack={() => setActiveNav('Dashboard')} currentUser={currentUser} /> : <>
-          <section className="page-heading"><div><p className="eyebrow">Tuesday, 22 September 2026</p><h1>Dashboard</h1><p className="heading-subtitle">Here is today&apos;s verification overview.</p></div><button className="outline-button"><FileText size={15} /> Export report</button></section>
+          <section className="page-heading"><div><p className="eyebrow">Tuesday, 22 September 2026</p><h1>{dashboardTitle(currentUser?.roles[0])}</h1><p className="heading-subtitle">{dashboardSubtitle(currentUser?.roles[0])}</p></div><button className="outline-button"><FileText size={15} /> Export report</button></section>
 
           <section className="metric-grid" aria-label="Overview metrics">
             <Metric icon={Map} label="Parcels" value={formatNumber(display.total_parcels)} change={apiState === 'live' ? 'Live' : 'Demo'} accent="blue" />
@@ -201,7 +207,7 @@ function LoginScreen({ onContinue }: { onContinue: (user: CurrentUser) => void }
       setError(loginError instanceof Error ? loginError.message : 'Unable to sign in')
     }
   }
-  const enterDemo = () => onContinue({ id: 0, full_name: 'Demo Officer', email: 'demo@landguard.local', is_active: true, roles: ['VERIFICATION_OFFICER'] })
+  const enterDemo = () => onContinue({ id: 0, full_name: 'Demo Officer', email: 'demo@landguard.local', is_active: true, roles: ['OFFICER'] })
   return <div className="login-screen"><div className="login-card"><div className="brand-row login-brand"><div className="brand-mark"><ShieldCheck size={17} /></div><span>LandGuard AI</span></div><h1>Sign in</h1><p className="login-subtitle">Verification and fraud-risk decision-support system</p><form onSubmit={submit} className="login-form"><label>Username<input type="text" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="m.habyarimana" autoComplete="username" required /></label><label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••••" autoComplete="current-password" required /></label><fieldset className="role-field"><legend>Role</legend><div className="role-switcher">{['Officer', 'Admin', 'Auditor'].map((option) => <button type="button" key={option} className={role === option ? 'role-option role-option--active' : 'role-option'} onClick={() => setRole(option)}>{option}</button>)}</div></fieldset>{error && <p className="login-error">{error}</p>}<button className="login-button" type="submit">Sign in</button></form><button className="demo-button" onClick={enterDemo}>Explore demo workspace</button><p className="login-note">Authorized personnel only.<br />All access attempts are logged and audited.</p></div></div>
 }
 
@@ -221,7 +227,7 @@ function WorkspacePage({ page, onBack, currentUser }: { page: string; onBack: ()
 }
 
 function AdminUsersPage({ onBack }: { onBack: () => void }) {
-  const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'VERIFICATION_OFFICER' })
+  const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'OFFICER' })
   const [message, setMessage] = useState('')
   const [accounts, setAccounts] = useState<UserRecord[]>([])
   const [removeTarget, setRemoveTarget] = useState<UserRecord | null>(null)
@@ -234,10 +240,10 @@ function AdminUsersPage({ onBack }: { onBack: () => void }) {
     const token = localStorage.getItem('landguard_access_token')
     const response = await fetch(`${apiUrl}/users`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(form) })
     setMessage(response.ok ? 'User created successfully.' : (await response.json()).detail ?? 'Unable to create user.')
-    if (response.ok) { setForm({ full_name: '', email: '', password: '', role: 'VERIFICATION_OFFICER' }); loadAccounts() }
+    if (response.ok) { setForm({ full_name: '', email: '', password: '', role: 'OFFICER' }); loadAccounts() }
   }
   const removeAccess = async () => { if (!removeTarget) return; await fetch(`${apiUrl}/users/${removeTarget.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); setRemoveTarget(null); loadAccounts() }
-  return <section className="workspace-page"><button className="back-button" onClick={onBack}>← Dashboard</button><div className="workspace-header"><div><h1>Users</h1><p>Only administrators can create officer and auditor accounts, or remove access for staff who have left.</p></div></div>{loadError ? <div className="access-message">{loadError}</div> : <div className="admin-user-layout"><form className="user-create-form" onSubmit={submit}><p className="eyebrow">Create account</p><div className="create-fields"><label>Full name<input required placeholder="e.g. Diane Uwimana" value={form.full_name} onChange={(event) => setForm({ ...form, full_name: event.target.value })} /></label><label>Username or email<input required type="email" placeholder="d.uwimana" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label><label>Temporary password<input required type="password" minLength={8} placeholder="Auto-generated or set manually" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label><label>Role<select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}><option value="VERIFICATION_OFFICER">Verification officer</option><option value="AUDITOR">Auditor</option></select></label></div><button className="login-button" type="submit">Create user</button>{message && <p className="form-message">{message}</p>}<small>The new user must change their password on first sign-in. This action is recorded in the audit log.</small></form><div className="accounts-panel"><div className="accounts-heading"><div><strong>Authorized accounts</strong><span>{accounts.filter((account) => account.is_active).length} active accounts</span></div></div>{accounts.map((account) => <div className="account-row" key={account.id}><div className="avatar">{initials(account.full_name)}</div><div className="account-name"><strong>{account.full_name}</strong><span>{account.email}{!account.is_active && ' (access revoked)'}</span></div><span className={`account-role account-role--${account.roles[0]?.name.toLowerCase()}`}>{displayRole(account.roles[0]?.name).replace('Verification ', '')}</span><span className={account.is_active ? 'account-active' : 'account-inactive'}>{account.is_active ? '● Active' : '● Revoked'}</span><button className="account-icon" aria-label={`Disable ${account.full_name}`} onClick={() => setRemoveTarget(account)} disabled={!account.is_active || account.id === 0}><MinusCircle size={14} /></button><button className="account-icon account-icon--delete" aria-label={`Remove access for ${account.full_name}`} onClick={() => setRemoveTarget(account)} disabled={!account.is_active || account.id === 0}><Trash2 size={14} /></button></div>)}</div></div>}{removeTarget && <div className="modal-backdrop"><div className="remove-modal"><div className="remove-icon"><Trash2 size={22} /></div><h2>Remove {removeTarget.full_name}?</h2><p>This account will immediately lose access to LandGuard AI. Their <strong>{displayRole(removeTarget.roles[0]?.name)}</strong> role and login will be revoked.</p><div className="remove-note">Their past actions stay in the audit log and case history. Removing the account does not delete records they created or reviewed.</div><div className="modal-actions"><button className="cancel-button" onClick={() => setRemoveTarget(null)}>Cancel</button><button className="remove-button" onClick={removeAccess}>Remove user</button></div></div></div>}</section>
+  return <section className="workspace-page"><button className="back-button" onClick={onBack}>← Dashboard</button><div className="workspace-header"><div><h1>Users</h1><p>Only administrators can create officer and auditor accounts, or remove access for staff who have left.</p></div></div>{loadError ? <div className="access-message">{loadError}</div> : <div className="admin-user-layout"><form className="user-create-form" onSubmit={submit}><p className="eyebrow">Create account</p><div className="create-fields"><label>Full name<input required placeholder="e.g. Diane Uwimana" value={form.full_name} onChange={(event) => setForm({ ...form, full_name: event.target.value })} /></label><label>Username or email<input required type="email" placeholder="d.uwimana" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label><label>Temporary password<input required type="password" minLength={8} placeholder="Auto-generated or set manually" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label><label>Role<select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}><option value="OFFICER">Officer</option><option value="AUDITOR">Auditor</option></select></label></div><button className="login-button" type="submit">Create user</button>{message && <p className="form-message">{message}</p>}<small>The new user must change their password on first sign-in. This action is recorded in the audit log.</small></form><div className="accounts-panel"><div className="accounts-heading"><div><strong>Authorized accounts</strong><span>{accounts.filter((account) => account.is_active).length} active accounts</span></div></div>{accounts.map((account) => <div className="account-row" key={account.id}><div className="avatar">{initials(account.full_name)}</div><div className="account-name"><strong>{account.full_name}</strong><span>{account.email}{!account.is_active && ' (access revoked)'}</span></div><span className={`account-role account-role--${account.roles[0]?.name.toLowerCase()}`}>{displayRole(account.roles[0]?.name).replace('Verification ', '')}</span><span className={account.is_active ? 'account-active' : 'account-inactive'}>{account.is_active ? '● Active' : '● Revoked'}</span><button className="account-icon" aria-label={`Disable ${account.full_name}`} onClick={() => setRemoveTarget(account)} disabled={!account.is_active || account.id === 0}><MinusCircle size={14} /></button><button className="account-icon account-icon--delete" aria-label={`Remove access for ${account.full_name}`} onClick={() => setRemoveTarget(account)} disabled={!account.is_active || account.id === 0}><Trash2 size={14} /></button></div>)}</div></div>}{removeTarget && <div className="modal-backdrop"><div className="remove-modal"><div className="remove-icon"><Trash2 size={22} /></div><h2>Remove {removeTarget.full_name}?</h2><p>This account will immediately lose access to LandGuard AI. Their <strong>{displayRole(removeTarget.roles[0]?.name)}</strong> role and login will be revoked.</p><div className="remove-note">Their past actions stay in the audit log and case history. Removing the account does not delete records they created or reviewed.</div><div className="modal-actions"><button className="cancel-button" onClick={() => setRemoveTarget(null)}>Cancel</button><button className="remove-button" onClick={removeAccess}>Remove user</button></div></div></div>}</section>
 }
 
 function WorkspaceHeader({ title, subtitle, search, onBack, currentUser }: { title: string; subtitle: string; search: string; onBack: () => void; currentUser: CurrentUser | null }) {
@@ -269,10 +275,22 @@ function initials(name: string) {
 }
 
 function displayRole(role?: string) {
-  if (role === 'VERIFICATION_OFFICER') return 'Verification officer'
+  if (role === 'OFFICER') return 'Verification officer'
   if (role === 'ADMIN') return 'Administrator'
   if (role === 'AUDITOR') return 'Auditor'
   return 'Authorized user'
+}
+
+function dashboardTitle(role?: string) {
+  if (role === 'ADMIN') return 'Admin dashboard'
+  if (role === 'AUDITOR') return 'Auditor dashboard'
+  return 'Officer dashboard'
+}
+
+function dashboardSubtitle(role?: string) {
+  if (role === 'ADMIN') return 'System-wide users, records, activity, and risk overview.'
+  if (role === 'AUDITOR') return 'Review system activity, verification records, and audit trails.'
+  return 'Recent transactions, pending verification, and risk indicators.'
 }
 
 export default App

@@ -24,7 +24,8 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
 
 def create_auth_token(user: User) -> str:
     expires_delta = timedelta(minutes=60)
-    return create_access_token(subject=str(user.id), expires_delta=expires_delta)
+    role = next(iter({role.name for role in user.roles}), None)
+    return create_access_token(subject=str(user.id), expires_delta=expires_delta, claims={"role": role})
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:

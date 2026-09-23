@@ -3,14 +3,13 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
+from app.core.roles import UserRole
+
 
 class UserBase(BaseModel):
     full_name: str
     email: EmailStr
     is_active: bool = True
-
-
-UserRole = Literal["VERIFICATION_OFFICER", "AUDITOR"]
 
 
 class UserCreate(UserBase):

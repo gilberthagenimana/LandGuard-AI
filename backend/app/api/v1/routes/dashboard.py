@@ -17,7 +17,7 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 @router.get("/stats")
 def get_dashboard_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("ADMIN", "VERIFICATION_OFFICER", "AUDITOR")),
+    current_user: User = Depends(require_roles("ADMIN", "OFFICER", "AUDITOR")),
 ):
     activity = (
         db.query(AuditLog)

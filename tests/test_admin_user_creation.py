@@ -49,7 +49,7 @@ def test_registration_requires_admin():
 def test_admin_can_create_officer_with_role():
     db = SessionLocal()
     admin_role = Role(name="ADMIN", description="Administrator")
-    officer_role = Role(name="VERIFICATION_OFFICER", description="Officer")
+    officer_role = Role(name="OFFICER", description="Officer")
     admin = User(full_name="Admin", email="admin@example.com", password_hash=hash_password("AdminPass123"), is_active=True, roles=[admin_role])
     db.add_all([admin, officer_role])
     db.commit()
@@ -61,8 +61,8 @@ def test_admin_can_create_officer_with_role():
     response = client.post(
         "/users",
         headers={"Authorization": f"Bearer {token}"},
-        json={"full_name": "Officer User", "email": "officer@example.com", "password": "Pass12345", "role": "VERIFICATION_OFFICER"},
+        json={"full_name": "Officer User", "email": "officer@example.com", "password": "Pass12345", "role": "OFFICER"},
     )
 
     assert response.status_code == 200
-    assert response.json()["roles"][0]["name"] == "VERIFICATION_OFFICER"
+    assert response.json()["roles"][0]["name"] == "OFFICER"

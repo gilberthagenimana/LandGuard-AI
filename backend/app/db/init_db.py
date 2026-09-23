@@ -21,11 +21,18 @@ def init_db() -> None:
     try:
         default_roles = {
             "ADMIN": "Full system administration access.",
-            "VERIFICATION_OFFICER": "Can verify transactions and manage review cases.",
+            "OFFICER": "Can verify transactions and manage review cases.",
             "AUDITOR": "Read-only access to verification data and audit records.",
         }
+        legacy_role = db.query(Role).filter(Role.name == "VERIFICATION_OFFICER").first()
+        officer_role = db.query(Role).filter(Role.name == "OFFICER").first()
+        if legacy_role and officer_role is None:
+            legacy_role.name = "OFFICER"
+            officer_role = legacy_role
         for name, description in default_roles.items():
-            if db.query(Role).filter(Role.name == name).first() is None:
+            if name == "OFFICER" and officer_role is not None:
+                officer_role.description = description
+            elif db.query(Role).filter(Role.name == name).first() is None:
                 db.add(Role(name=name, description=description))
         db.commit()
     finally:

@@ -1,14 +1,12 @@
-from typing import Literal
-
 from pydantic import BaseModel, EmailStr
 
-LoginRole = Literal["OFFICER", "ADMIN", "AUDITOR"]
+from app.core.roles import UserRole
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
-    role: LoginRole
+    role: UserRole
 
 
 class TokenResponse(BaseModel):

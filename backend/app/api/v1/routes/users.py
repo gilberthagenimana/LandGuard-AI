@@ -35,7 +35,7 @@ def create_user(
         password_hash=hash_password(payload.password),
         is_active=payload.is_active,
     )
-    role = db.query(Role).filter(Role.name == payload.role).first()
+    role = db.query(Role).filter(Role.name == payload.role.value).first()
     if role is None:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="User role is not configured")
     user.roles.append(role)

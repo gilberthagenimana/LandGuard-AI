@@ -17,7 +17,7 @@ router = APIRouter(prefix="/verification", tags=["Verification"])
 def verify_transaction_route(
     transaction_id: int,
     db: Session = Depends(get_db),
-    _current_user: User = Depends(require_roles("ADMIN", "VERIFICATION_OFFICER", "AUDITOR")),
+    _current_user: User = Depends(require_roles("ADMIN", "OFFICER")),
 ):
     transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
     if transaction is None:
