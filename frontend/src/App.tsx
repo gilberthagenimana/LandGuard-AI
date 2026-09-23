@@ -17,6 +17,8 @@ import {
   MoreHorizontal,
   Search,
   ShieldCheck,
+  UserRound,
+  LogOut,
   Users,
   X,
 } from 'lucide-react'
@@ -70,6 +72,7 @@ function App() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [apiState, setApiState] = useState<'demo' | 'live'>('demo')
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const visibleAlerts = alertFilter === 'All' ? alerts : alerts.filter((alert) => alert.risk === alertFilter)
 
   useEffect(() => {
@@ -130,7 +133,7 @@ function App() {
         </nav>
         <div className="sidebar-bottom">
           <div className="support-link"><CircleHelp size={16} /><span>Help & documentation</span></div>
-          <div className="user-card"><div className="avatar">{currentUser ? initials(currentUser.full_name) : 'GG'}</div><div><strong>{currentUser?.full_name ?? 'Demo Officer'}</strong><span>{currentUser ? displayRole(currentUser.roles[0]) : 'Demo workspace'}</span></div><button className="logout-button" onClick={logout}>Log out</button></div>
+          <div className="user-card"><div className="avatar">{currentUser ? initials(currentUser.full_name) : 'GG'}</div><div><strong>{currentUser?.full_name ?? 'Demo Officer'}</strong><span>{currentUser ? displayRole(currentUser.roles[0]) : 'Demo workspace'}</span></div><button className="logout-button" onClick={logout}><LogOut size={14} /> Log out</button></div>
         </div>
       </aside>
 
@@ -140,7 +143,7 @@ function App() {
         <header className="topbar">
           <button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileNavOpen(true)}><Menu size={20} /></button>
           <div className="breadcrumbs"><span>Workspace</span><span className="crumb-divider">/</span><strong>{activeNav}</strong></div>
-          <div className="top-actions"><button className="search-trigger"><Search size={16} /><span>Search anything</span><kbd>⌘ K</kbd></button><button className="icon-button notification-button" aria-label="Notifications"><Bell size={18} /><i /></button><div className="top-avatar">{currentUser ? initials(currentUser.full_name) : 'DO'}</div></div>
+          <div className="top-actions"><button className="search-trigger"><Search size={16} /><span>Search anything</span><kbd>⌘ K</kbd></button><button className="icon-button notification-button" aria-label="Notifications"><Bell size={18} /><i /></button><div className="profile-menu-wrap"><button className="profile-trigger" aria-expanded={profileMenuOpen} onClick={() => setProfileMenuOpen(!profileMenuOpen)}><div className="top-avatar">{currentUser ? initials(currentUser.full_name) : 'DO'}</div><span>{currentUser?.full_name ?? 'Demo Officer'}</span><ChevronDown size={16} /></button>{profileMenuOpen && <div className="profile-menu"><div className="profile-menu-heading"><strong>{currentUser?.full_name ?? 'Demo Officer'}</strong><span>{currentUser ? displayRole(currentUser.roles[0]) : 'Demo workspace'}</span></div><button className="profile-menu-item"><UserRound size={19} /> Profile settings</button><button className="profile-menu-item profile-menu-item--logout" onClick={logout}><LogOut size={19} /> Log out</button></div>}</div></div>
         </header>
 
         <div className="content-wrap">
