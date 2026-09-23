@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AlertTriangle,
   Bell,
@@ -45,11 +45,45 @@ const activity = [
   { icon: FolderOpen, text: 'Closed case for RW-33107 — no issues found', time: 'Yesterday', tone: 'muted' },
 ]
 
+type DashboardStats = {
+  total_parcels: number
+  total_owners: number
+  total_transactions: number
+  transactions_under_review: number
+  low_risk_transactions: number
+  medium_risk_transactions: number
+  high_risk_transactions: number
+  recent_verification_activity: { action: string; entity: string; entity_id: string | null; created_at: string }[]
+}
+
+const apiUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
+
 function App() {
   const [activeNav, setActiveNav] = useState('Dashboard')
   const [alertFilter, setAlertFilter] = useState<Risk | 'All'>('All')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [apiState, setApiState] = useState<'demo' | 'live'>('demo')
   const visibleAlerts = alertFilter === 'All' ? alerts : alerts.filter((alert) => alert.risk === alertFilter)
+
+  useEffect(() => {
+    const token = localStorage.getItem('landguard_access_token')
+    if (!token) return
+    fetch(`${apiUrl}/dashboard/stats`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Dashboard access denied')))
+      .then((data: DashboardStats) => { setStats(data); setApiState('live') })
+      .catch(() => setApiState('demo'))
+  }, [])
+
+  const display = stats ?? {
+    total_parcels: 4812,
+    total_owners: 3940,
+    total_transactions: 1207,
+    transactions_under_review: 36,
+    low_risk_transactions: 982,
+    medium_risk_transactions: 189,
+    high_risk_transactions: 36,
+  }
 
   return (
     <div className="app-shell">
@@ -92,16 +126,16 @@ function App() {
           <section className="page-heading"><div><p className="eyebrow">Tuesday, 22 September 2026</p><h1>Dashboard</h1><p className="heading-subtitle">Here is today&apos;s verification overview.</p></div><button className="outline-button"><FileText size={15} /> Export report</button></section>
 
           <section className="metric-grid" aria-label="Overview metrics">
-            <Metric icon={Map} label="Parcels" value="4,812" change="+4.8%" accent="blue" />
-            <Metric icon={Users} label="Owners" value="3,940" change="+2.1%" accent="violet" />
-            <Metric icon={FileText} label="Transactions" value="1,207" change="+8.6%" accent="amber" />
-            <Metric icon={FolderOpen} label="Under review" value="36" change="+3 cases" accent="red" />
+            <Metric icon={Map} label="Parcels" value={formatNumber(display.total_parcels)} change={apiState === 'live' ? 'Live' : 'Demo'} accent="blue" />
+            <Metric icon={Users} label="Owners" value={formatNumber(display.total_owners)} change={apiState === 'live' ? 'Live' : 'Demo'} accent="violet" />
+            <Metric icon={FileText} label="Transactions" value={formatNumber(display.total_transactions)} change={apiState === 'live' ? 'Live' : 'Demo'} accent="amber" />
+            <Metric icon={FolderOpen} label="Under review" value={formatNumber(display.transactions_under_review)} change={apiState === 'live' ? 'Live' : 'Demo'} accent="red" />
           </section>
 
           <section className="risk-row">
-            <RiskCard label="Low risk" value="982" percent="81.4%" tone="low" icon={Check} />
-            <RiskCard label="Medium risk" value="189" percent="15.7%" tone="medium" icon={AlertTriangle} />
-            <RiskCard label="High risk" value="36" percent="2.9%" tone="high" icon={Flag} />
+            <RiskCard label="Low risk" value={formatNumber(display.low_risk_transactions)} percent={riskPercent(display.low_risk_transactions, display.total_transactions)} tone="low" icon={Check} />
+            <RiskCard label="Medium risk" value={formatNumber(display.medium_risk_transactions)} percent={riskPercent(display.medium_risk_transactions, display.total_transactions)} tone="medium" icon={AlertTriangle} />
+            <RiskCard label="High risk" value={formatNumber(display.high_risk_transactions)} percent={riskPercent(display.high_risk_transactions, display.total_transactions)} tone="high" icon={Flag} />
           </section>
 
           <section className="dashboard-grid">
@@ -111,7 +145,7 @@ function App() {
 
           <section className="panel activity-panel"><div className="panel-heading"><div><p className="eyebrow">Your team&apos;s work</p><h2>Recent verification activity</h2></div><button className="text-button">View activity <span>→</span></button></div><div className="activity-list">{activity.map(({ icon: Icon, text, time, tone }) => <div className="activity-item" key={text}><div className={`activity-icon activity-icon--${tone}`}><Icon size={14} /></div><span>{text}</span><time>{time}</time></div>)}</div></section>
 
-          <footer className="footer"><span><span className="live-dot" />All systems operational</span><span>Data refreshed 4 minutes ago</span></footer>
+          <footer className="footer"><span><span className="live-dot" />{apiState === 'live' ? 'Connected to LandGuard API' : 'Demo data — sign in to connect API'}</span><span>{apiState === 'live' ? 'Live database metrics' : 'Data refreshed 4 minutes ago'}</span></footer>
         </div>
       </main>
     </div>
@@ -128,6 +162,14 @@ function RiskCard({ label, value, percent, tone, icon: Icon }: { label: string; 
 
 function Bar({ value, label, tone, count }: { value: string; label: string; tone: string; count: string }) {
   return <div className="bar-column"><div className={`bar bar--${tone}`} style={{ height: value }}><span>{count}</span></div><strong>{label}</strong></div>
+}
+
+function formatNumber(value: number) {
+  return value.toLocaleString()
+}
+
+function riskPercent(value: number, total: number) {
+  return total ? `${((value / total) * 100).toFixed(1)}%` : '0.0%'
 }
 
 export default App
