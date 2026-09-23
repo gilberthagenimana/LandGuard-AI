@@ -18,7 +18,12 @@ class Settings(BaseSettings):
     model_path: str = "ml/models/risk_model.joblib"
     synthetic_data_path: str = "ml/data/synthetic_land_transactions.csv"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        protected_namespaces=("settings_",),
+    )
 
 
 @lru_cache

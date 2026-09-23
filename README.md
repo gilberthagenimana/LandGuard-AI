@@ -48,6 +48,17 @@ This repository currently includes the planning and architectural foundation, pl
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+### AI/ML model
+
+The ML pipeline uses synthetic transaction data for academic development and testing. From the repository root, generate the data and train the model before using the risk-analysis endpoint:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.scripts.generate_dataset --output ml/data/synthetic_land_transactions.csv --rows 1200
+.\.venv\Scripts\python.exe -m ml.training.train --dataset ml/data/synthetic_land_transactions.csv --model-dir ml/models
+```
+
+See `docs/ai-model.md` for the feature design, evaluation approach, and limitations.
+
 ### Frontend
 
 The frontend application skeleton is prepared in `frontend/` and can be completed in subsequent phases.

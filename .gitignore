@@ -33,5 +33,8 @@ build/
 # TypeScript build metadata
 *.tsbuildinfo
 
+# Trained model binaries
+*.joblib
+
 # Misc
 *.bak
