@@ -4,123 +4,101 @@
 
 The system is structured as a clean three-layer architecture with explicit separation of concerns:
 
-Frontend (Next.js + TypeScript + Tailwind)
+Frontend (React + TypeScript + Vite)
 ↓
 Backend API (FastAPI + Python)
 ↓
 Business Services / Domain Logic
 ↓
-PostgreSQL Database
+PostgreSQL / SQLite Database
 ↓
 AI/ML Module (Python, pandas, NumPy, scikit-learn)
 
 This design keeps the user interface, verification logic, database access, and ML processing independent so each part can be tested and evolved separately.
 
-## 2. Recommended technology stack
+## 2. Technology stack
 
 ### Frontend
-- React
-- Next.js
-- TypeScript
-- Tailwind CSS
-- Axios or native fetch
+- React 18
+- TypeScript 5
+- Vite 6
+- Lucide React icons
+- Native fetch API
 
 ### Backend
-- Python
+- Python 3.13+
 - FastAPI
-- Pydantic
-- SQLAlchemy / Alembic
-- PostgreSQL driver
-- JWT authentication
-- Password hashing with Argon2 or bcrypt
+- Pydantic v2
+- SQLAlchemy 2 / Alembic
+- PostgreSQL driver (psycopg) / SQLite for local dev
+- JWT authentication (python-jose)
+- Password hashing (passlib / bcrypt)
+- Rate limiting (slowapi)
 
 ### Database
-- PostgreSQL
-- migrations via Alembic
+- PostgreSQL (production)
+- SQLite (local development, zero-dependency)
+- Migrations via Alembic
 
 ### AI / ML
 - Python
 - pandas
 - NumPy
 - scikit-learn
-- joblib or pickle
+- joblib
 
 ### DevOps / tooling
-- Docker
-- Git
-- GitHub
+- Docker / Docker Compose
+- Git / GitHub
 - pytest
 
 ## 3. Folder structure
 
 ```text
-land-fraud-detection/
+LandGuard-AI/
 ├── backend/
 │   ├── app/
-│   │   ├── api/
-│   │   │   └── v1/
-│   │   │       ├── routes/
-│   │   │       └── deps.py
-│   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   ├── security.py
-│   │   │   └── logging.py
-│   │   ├── models/
-│   │   ├── schemas/
-│   │   ├── services/
-│   │   │   ├── auth/
-│   │   │   ├── parcels/
-│   │   │   ├── owners/
-│   │   │   ├── transactions/
-│   │   │   ├── verification/
-│   │   │   ├── fraud_risk/
-│   │   │   ├── reviews/
-│   │   │   └── audit/
-│   │   ├── db/
-│   │   │   ├── base.py
-│   │   │   ├── session.py
-│   │   │   └── init_db.py
-│   │   ├── main.py
-│   │   └── __init__.py
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── alembic.ini
+│   │   ├── api/v1/routes/    # REST endpoints (auth, parcels, transactions, cases...)
+│   │   ├── core/             # Settings, RBAC roles, JWT security
+│   │   ├── db/               # Engine session, init_db, seed data
+│   │   ├── models/           # SQLAlchemy ORM models
+│   │   ├── schemas/          # Pydantic request/response schemas
+│   │   ├── services/         # Business logic: verification, risk, audit, auth
+│   │   └── main.py           # FastAPI entrypoint
+│   ├── alembic.ini           # Backend migration config
+│   ├── requirements.txt      # Python dependencies
+│   └── Dockerfile
 ├── frontend/
-│   ├── app/
-│   ├── components/
-│   ├── lib/
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── tailwind.config.ts
+│   ├── src/
+│   │   ├── lib/api.ts        # Typed API client
+│   │   ├── App.tsx           # Institutional dashboard & views
+│   │   ├── components/       # Reusable UI components
+│   │   ├── hooks/            # Custom React hooks
+│   │   ├── types/            # Shared TypeScript types
+│   │   └── styles.css        # Professional UI design system
+│   ├── package.json          # Node dependencies
+│   └── vite.config.ts        # Vite configuration
 ├── ml/
-│   ├── data/
-│   ├── models/
-│   ├── notebooks/
-│   ├── train_model.py
-│   └── predict.py
+│   ├── data/                 # Synthetic land transaction datasets
+│   ├── models/               # Serialized model & metrics.json
+│   ├── scripts/              # Dataset generation tools
+│   ├── training/             # Model training & comparative evaluation
+│   ├── evaluation/           # Model comparison utilities
+│   ├── notebooks/            # Jupyter notebooks for EDA
+│   └── predict.py            # Prediction service
 ├── database/
-│   ├── migrations/
-│   ├── schema.sql
-│   ├── erd.md
-│   └── seed_data.py
-├── docs/
-│   ├── architecture.md
-│   ├── api.md
-│   ├── security.md
-│   ├── ai-methodology.md
-│   └── phase-1-requirements-analysis.md
-├── tests/
-│   ├── api/
-│   ├── auth/
-│   ├── ml/
-│   └── verification/
-├── scripts/
-│   └── setup.sh
-├── .env.example
-├── .gitignore
-├── docker-compose.yml
-├── README.md
-└── .gitignore
+│   ├── migrations/           # Alembic revision scripts
+│   ├── seed/                 # Seed data documentation
+│   └── erd.md                # Entity relationship documentation
+├── docs/                     # Academic architecture, security, database & API docs
+├── scripts/                  # Utility scripts for development
+├── tests/                    # Automated pytest test suites
+├── .env.example              # Environment variable template
+├── .gitignore                # Git ignore rules
+├── docker-compose.yml        # Docker orchestration
+├── alembic.ini               # Root-level Alembic config
+├── pytest.ini                # Pytest configuration
+└── README.md                 # Project overview and setup guide
 ```
 
 ## 4. Database entities and relationships
@@ -133,9 +111,8 @@ land-fraud-detection/
 - `owners`
 - `ownership_history`
 - `transactions`
-- `verification_rules`
 - `verification_results`
-- `risk_analysis`
+- `risk_predictions`
 - `case_reviews`
 - `audit_logs`
 
@@ -155,7 +132,7 @@ land-fraud-detection/
 - view audit logs
 - global statistics
 
-### VERIFICATION_OFFICER
+### OFFICER
 - search parcels and ownership records
 - create and manage verification cases
 - run verification rules
@@ -196,36 +173,53 @@ land-fraud-detection/
 ## 8. API plan
 
 ### Authentication
-- `POST /auth/login`
-- `POST /auth/logout`
-- `GET /auth/me`
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+- `PUT /api/auth/me`
 
 ### Users and roles
-- `GET /users`
-- `POST /users`
-- `GET /users/{user_id}`
-- `PUT /users/{user_id}`
+- `GET /api/users`
+- `POST /api/users`
+- `GET /api/users/{user_id}`
+- `PUT /api/users/{user_id}`
+- `DELETE /api/users/{user_id}`
+- `POST /api/users/{user_id}/reactivate`
 
 ### Parcels and owners
-- `GET /parcels`
-- `GET /parcels/{parcel_id}`
-- `POST /parcels`
-- `GET /parcels/{parcel_id}/ownership-history`
-- `GET /parcels/{parcel_id}/transactions`
+- `GET /api/parcels`
+- `GET /api/parcels/{parcel_id}`
+- `POST /api/parcels`
+- `PUT /api/parcels/{parcel_id}`
+- `GET /api/parcels/{parcel_id}/ownership-history`
+- `POST /api/parcels/{parcel_id}/ownership-history`
+- `GET /api/parcels/{parcel_id}/transactions`
+- `GET /api/owners`
+- `POST /api/owners`
+- `GET /api/owners/{owner_id}`
+- `PUT /api/owners/{owner_id}`
 
 ### Transactions and verification
-- `POST /transactions`
-- `GET /transactions`
-- `GET /transactions/{transaction_id}`
-- `POST /verification`
-- `POST /risk-analysis`
+- `GET /api/transactions`
+- `POST /api/transactions`
+- `GET /api/transactions/{transaction_id}`
+- `GET /api/transactions/{transaction_id}/verification`
+- `POST /api/verification`
+- `POST /api/verification/transactions/{transaction_id}`
+- `POST /api/risk-analysis`
+- `POST /api/risk-analysis/transactions/{transaction_id}`
+- `GET /api/risk-analysis/transactions/{transaction_id}`
 
 ### Cases and audit
-- `GET /cases`
-- `GET /cases/{case_id}`
-- `PUT /cases/{case_id}`
-- `GET /audit-logs`
-- `GET /reports`
+- `GET /api/cases`
+- `GET /api/cases/{case_id}`
+- `PUT /api/cases/{case_id}`
+- `GET /api/audit-logs`
+- `GET /api/reports/verification`
+- `GET /api/reports/risk`
+- `GET /api/reports/cases`
+- `GET /api/reports/audit`
+- `GET /api/reports/parcels/{parcel_id}/history`
 
 ## 9. Development phases
 

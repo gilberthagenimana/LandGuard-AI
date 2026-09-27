@@ -3,19 +3,23 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, decode_access_token, verify_password
 from app.db.session import get_db
 from app.models.user import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
+def authenticate_user(db: Session, identifier: str, password: str) -> Optional[User]:
+    user = (
+        db.query(User)
+        .filter(or_(User.email == identifier, User.username == identifier))
+        .first()
+    )
+    if not user or not user.is_active:
         return None
     if not verify_password(password, user.password_hash):
         return None

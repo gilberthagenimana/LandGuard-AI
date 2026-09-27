@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from math import log
 from pathlib import Path
 
 import joblib
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.ownership_history import OwnershipHistory
+from app.models.risk_prediction import RiskPrediction
 from app.models.transaction import Transaction
 from app.schemas.risk import RiskAnalysisResponse
 
@@ -47,27 +49,29 @@ def build_transaction_features(db: Session, transaction: Transaction) -> dict:
     recent_transactions = [item for item in previous_transactions if item.transaction_date >= recent_cutoff]
     latest_owner = max(ownership_changes, key=lambda item: item.transfer_date, default=None)
     active_conflict = next(
-        (
-            item
-            for item in previous_transactions
-            if item.status in {"PENDING", "UNDER_REVIEW", "ACTIVE"}
-        ),
+        (item for item in previous_transactions if item.status in {"PENDING", "UNDER_REVIEW", "ACTIVE"}),
         None,
     )
-
+    previous_dates = [item.transaction_date for item in previous_transactions]
+    days_since = 1500
+    if previous_dates:
+        days_since = min((transaction.transaction_date - max(previous_dates)).days, 1500)
+        days_since = max(days_since, 0)
+    declared = float(transaction.declared_value or 1)
     return {
         "seller_owner_match": int(bool(latest_owner and transaction.seller_owner_id == latest_owner.new_owner_id)),
         "duplicate_transaction": int(active_conflict is not None),
         "recent_ownership_change": int(any(item.transfer_date >= recent_cutoff for item in ownership_changes)),
-        "record_inconsistency": int(transaction.seller_owner_id is None or transaction.parcel_id is None),
+        "record_inconsistency": int(
+            transaction.seller_owner_id is None
+            or transaction.parcel_id is None
+            or transaction.buyer_owner_id is None
+        ),
         "ownership_changes": len(ownership_changes),
         "previous_transactions": len(previous_transactions),
         "transaction_frequency_30d": len(recent_transactions),
-        "days_since_previous_transaction": min(
-            (transaction.transaction_date - max((item.transaction_date for item in previous_transactions), default=transaction.transaction_date)).days,
-            1500,
-        ),
-        "transaction_value_log": 16.0,
+        "days_since_previous_transaction": days_since,
+        "transaction_value_log": round(log(max(declared, 1.0)), 4),
     }
 
 
@@ -82,10 +86,12 @@ def analyze_transaction(db: Session, transaction: Transaction) -> RiskAnalysisRe
     risk_level = str(model.predict(frame)[0])
     probabilities = model.predict_proba(frame)[0]
     score_weights = {"LOW": 20, "MEDIUM": 55, "HIGH": 85}
-    risk_score = round(sum(float(probability) * score_weights[label] for label, probability in zip(model.classes_, probabilities)))
+    risk_score = round(
+        sum(float(probability) * score_weights[label] for label, probability in zip(model.classes_, probabilities))
+    )
     reasons = []
     if features["duplicate_transaction"]:
-        reasons.append("Possible duplicate or conflicting transaction detected.")
+        reasons.append("Possible duplicate transaction detected.")
     if features["seller_owner_match"] == 0:
         reasons.append("Seller does not match the latest recorded owner.")
     if features["recent_ownership_change"]:
@@ -94,12 +100,25 @@ def analyze_transaction(db: Session, transaction: Transaction) -> RiskAnalysisRe
         reasons.append("Unusual transaction frequency detected.")
     if features["record_inconsistency"]:
         reasons.append("Inconsistent transaction information detected.")
+    if not reasons:
+        reasons.append("No elevated rule-based risk indicators were observed in the available records.")
+
+    record = RiskPrediction(
+        transaction_id=transaction.id,
+        risk_score=risk_score,
+        risk_level=risk_level,
+        model_version="random_forest-v1-synthetic",
+        explanation=" ".join(reasons),
+        indicators=reasons,
+    )
+    db.add(record)
+    db.flush()
 
     return RiskAnalysisResponse(
         transaction_id=transaction.id,
         risk_score=risk_score,
         risk_level=risk_level,
-        model_version="random_forest-v1-synthetic",
+        model_version=record.model_version,
         reasons=reasons,
         analyzed_at=datetime.now(timezone.utc),
     )

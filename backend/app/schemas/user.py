@@ -1,19 +1,20 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.core.roles import UserRole
 
 
 class UserBase(BaseModel):
     full_name: str
-    email: EmailStr
+    email: str = Field(..., min_length=3, max_length=255)
+    username: Optional[str] = None
     is_active: bool = True
 
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(min_length=8)
     role: UserRole
 
 
@@ -24,23 +25,16 @@ class RoleOut(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
+    username: Optional[str] = None
     is_active: Optional[bool] = None
+    role: Optional[UserRole] = None
 
 
 class UserOut(UserBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    username: str
     created_at: datetime
     updated_at: datetime
     roles: list[RoleOut] = []
-
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"

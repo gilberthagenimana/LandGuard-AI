@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_debug: bool = True
     app_port: int = 8000
-    database_url: str = "sqlite:///./land_verification.db"
-    jwt_secret_key: str = "change-me-in-production"
+    database_url: str
+    jwt_secret_key: str = "dev-only-secret-key-change-in-production"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
     cors_origins: List[str] = [
