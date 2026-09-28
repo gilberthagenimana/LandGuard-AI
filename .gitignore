@@ -9,10 +9,10 @@ venv/
 .env.*
 !.env.example
 
-# Node / Next.js
+# Node / React
 node_modules/
-.next/
-out/
+dist/
+build/
 coverage/
 .npm/
 
@@ -21,14 +21,10 @@ coverage/
 Thumbs.db
 .vscode/
 
-# Build
-dist/
-build/
-*.log
-
 # Database
 *.sqlite3
 *.db
+*.db-journal
 
 # TypeScript build metadata
 *.tsbuildinfo
@@ -38,3 +34,7 @@ build/
 
 # Misc
 *.bak
+
+# Sub-repositories (managed separately)
+landguard-ai-backend/
+landguard-ai-frontend/

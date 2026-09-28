@@ -96,6 +96,7 @@ function App() {
   const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null)
   const [showNewTxModal, setShowNewTxModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showNewOwnerModal, setShowNewOwnerModal] = useState(false)
 
   const loadCurrentUserAndStats = async () => {
     try {
@@ -266,7 +267,9 @@ function App() {
             />
           )}
 
-          {activeNav === 'Owners' && <OwnersView />}
+          {activeNav === 'Owners' && (
+            <OwnersView onNewOwner={() => setShowNewOwnerModal(true)} />
+          )}
 
           {activeNav === 'Transactions' && (
             <TransactionsView
@@ -323,6 +326,17 @@ function App() {
           onCreated={(newTxId) => {
             setShowNewTxModal(false)
             setSelectedTxId(newTxId)
+            loadCurrentUserAndStats()
+          }}
+        />
+      )}
+
+      {/* New Owner Registration Modal */}
+      {showNewOwnerModal && (
+        <NewOwnerModal
+          onClose={() => setShowNewOwnerModal(false)}
+          onCreated={() => {
+            setShowNewOwnerModal(false)
             loadCurrentUserAndStats()
           }}
         />
@@ -1488,7 +1502,7 @@ function CaseReviewModal({
 /* =========================================================================
    OWNERS VIEW
    ========================================================================= */
-function OwnersView() {
+function OwnersView({ onNewOwner }: { onNewOwner?: () => void }) {
   const [owners, setOwners] = useState<OwnerRecord[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -1517,15 +1531,22 @@ function OwnersView() {
           <h1>Registered Land Owners</h1>
           <p>Citizens and entities holding title deeds in available cadastre records</p>
         </div>
-        <div className="page-search">
-          <Search size={14} />
-          <input
-            type="text"
-            placeholder="Search owners..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ background: 'transparent', border: 0, color: 'inherit', width: '100%', outline: 'none', fontSize: '10px' }}
-          />
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {onNewOwner && (
+            <button className="btn-primary" onClick={onNewOwner}>
+              <Plus size={15} /> New Owner
+            </button>
+          )}
+          <div className="page-search">
+            <Search size={14} />
+            <input
+              type="text"
+              placeholder="Search owners..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ background: 'transparent', border: 0, color: 'inherit', width: '100%', outline: 'none', fontSize: '10px' }}
+            />
+          </div>
         </div>
       </div>
 
@@ -1953,6 +1974,133 @@ function NewTransactionModal({
             <button className="btn-secondary" type="button" onClick={onClose}>Cancel</button>
             <button className="btn-primary" type="submit" disabled={saving}>
               {saving ? 'Registering...' : 'Register & Proceed to Verification'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+/* =========================================================================
+   NEW OWNER REGISTRATION MODAL
+   ========================================================================= */
+function NewOwnerModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void
+  onCreated: () => void
+}) {
+  const [ownerCode, setOwnerCode] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [idNumber, setIdNumber] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState('ACTIVE')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      await api.createOwner({
+        owner_code: ownerCode,
+        full_name: fullName,
+        identification_number: idNumber || undefined,
+        phone: phone || undefined,
+        email: email || undefined,
+        status,
+      })
+      onCreated()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to register owner')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-window" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <h2>Register New Land Owner</h2>
+            <p>Add a citizen or entity to the cadastre records</p>
+          </div>
+          <button className="icon-button" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        <form onSubmit={submit} className="login-form">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <label>
+              Owner Code
+              <input
+                required
+                placeholder="e.g., OWN-2301"
+                value={ownerCode}
+                onChange={(e) => setOwnerCode(e.target.value)}
+              />
+            </label>
+            <label>
+              Full Name
+              <input
+                required
+                placeholder="e.g., Diane Uwimana"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </label>
+          </div>
+
+          <label>
+            Identification Number
+            <input
+              placeholder="e.g., 11999999-DEMO"
+              value={idNumber}
+              onChange={(e) => setIdNumber(e.target.value)}
+            />
+          </label>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <label>
+              Phone Number
+              <input
+                placeholder="e.g., +250780000099"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </label>
+            <label>
+              Email Address
+              <input
+                type="email"
+                placeholder="e.g., owner@landguard.local"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </label>
+          </div>
+
+          <label>
+            Status
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              style={{ width: '100%', padding: '10px', background: '#101310', border: '1px solid #303731', borderRadius: '6px', color: '#fff' }}
+            >
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+            </select>
+          </label>
+
+          {error && <p className="login-error">{error}</p>}
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+            <button className="btn-secondary" type="button" onClick={onClose}>Cancel</button>
+            <button className="btn-primary" type="submit" disabled={saving}>
+              {saving ? 'Registering...' : 'Register Owner'}
             </button>
           </div>
         </form>

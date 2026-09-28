@@ -35,6 +35,7 @@ export const api = {
   ownership: (id: number) => request<OwnershipRecord[]>(`/api/parcels/${id}/ownership-history`),
   parcelTransactions: (id: number) => request<TransactionRecord[]>(`/api/parcels/${id}/transactions`),
   owners: (q = '') => request<OwnerRecord[]>(`/api/owners${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  createOwner: (payload: object) => request<OwnerRecord>('/api/owners', { method: 'POST', body: JSON.stringify(payload) }),
   transactions: () => request<TransactionRecord[]>('/api/transactions'),
   transaction: (id: number) => request<TransactionRecord>(`/api/transactions/${id}`),
   createTransaction: (payload: object) => request<TransactionRecord>('/api/transactions', { method: 'POST', body: JSON.stringify(payload) }),
